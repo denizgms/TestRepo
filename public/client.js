@@ -137,11 +137,11 @@ function render() {
     controls.appendChild(button('Abstimmung neu starten', async () => {
       const res = await rpc('vote:restart');
       if (!res.ok) showError(res.error);
-    }));
+    }, 'secondary'));
   }
 
   if (me.isHost && ['reveal', 'voting'].includes(lobby.phase)) {
-    controls.appendChild(button('Runde neu starten', startNewRound));
+    controls.appendChild(button('Runde neu starten', startNewRound, 'secondary'));
   }
 
   if (lobby.phase === 'result') {
@@ -174,9 +174,10 @@ function renderCategorySelect(lobby, me) {
   categoryInfo.textContent = selected ? `${selected.count} Begriffe verfügbar` : '';
 }
 
-function button(label, onClick) {
+function button(label, onClick, variant = 'primary') {
   const btn = document.createElement('button');
   btn.textContent = label;
+  btn.className = variant;
   btn.onclick = onClick;
   return btn;
 }
