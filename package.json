@@ -1,0 +1,13 @@
+{
+  "name": "imposter-undercover-local",
+  "version": "1.0.0",
+  "description": "Lokales Multiplayer-Browsergame im Stil Imposter/Undercover",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.8.1"
+  }
+}

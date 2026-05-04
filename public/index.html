@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Imposter Word Game</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <h1>Imposter / Undercover</h1>
+    <section id="joinScreen" class="card">
+      <h2>Beitreten oder Lobby erstellen</h2>
+      <input id="nameInput" placeholder="Dein Name" maxlength="20" />
+      <input id="codeInput" placeholder="Lobby-Code (optional)" maxlength="5" />
+      <div class="actions">
+        <button id="createBtn">Lobby erstellen</button>
+        <button id="joinBtn">Spiel beitreten</button>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="hidden card">
+      <p><strong>Lobby:</strong> <span id="lobbyCode"></span></p>
+      <p id="phaseLabel"></p>
+      <p id="statusMessage"></p>
+      <div id="privateInfo" class="private-box"></div>
+      <div>
+        <h3>Spieler</h3>
+        <ul id="playersList"></ul>
+      </div>
+      <div id="cluesBlock">
+        <h3>Hinweise</h3>
+        <ul id="cluesList"></ul>
+      </div>
+
+      <div id="controls" class="actions"></div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
