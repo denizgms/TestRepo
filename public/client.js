@@ -12,7 +12,6 @@ const phaseLabel = document.getElementById('phaseLabel');
 const statusMessage = document.getElementById('statusMessage');
 const playersList = document.getElementById('playersList');
 const privateInfo = document.getElementById('privateInfo');
-const cluesList = document.getElementById('cluesList');
 const controls = document.getElementById('controls');
 
 function rpc(event, payload = {}) {
@@ -56,18 +55,9 @@ function render() {
     playersList.appendChild(li);
   });
 
-  cluesList.innerHTML = '';
-  lobby.clues.forEach((c) => {
-    const li = document.createElement('li');
-    li.textContent = `${c.playerName}: ${c.text}`;
-    cluesList.appendChild(li);
-  });
-
   const phaseText = {
     lobby: 'Warte auf Spieler (mind. 4).',
-    reveal: 'Sieh dir deine Rolle an und drücke „Bereit“.',
-    clue: 'Hinweise werden nacheinander abgegeben.',
-    discussion: 'Diskutiert jetzt, wer der Imposter sein könnte.',
+    reveal: 'Sieh dir deine Rolle an und drücke „Bereit“. Danach wird direkt abgestimmt.',
     voting: 'Wählt geheim, wer der Imposter ist.',
     result: 'Runde beendet.'
   };
@@ -91,26 +81,6 @@ function render() {
   if (lobby.phase === 'reveal' && !me.ready) {
     controls.appendChild(button('Bereit', async () => {
       const res = await rpc('player:ready');
-      if (!res.ok) showError(res.error);
-    }));
-  }
-
-  if (lobby.phase === 'clue') {
-    const currentId = lobby.turnOrder[lobby.currentTurnIndex];
-    if (currentId === me.playerId) {
-      const input = document.createElement('input');
-      input.placeholder = 'Dein Hinweis';
-      const btn = button('Hinweis abgeben', async () => {
-        const res = await rpc('clue:submit', { text: input.value });
-        if (!res.ok) showError(res.error);
-      });
-      controls.append(input, btn);
-    }
-  }
-
-  if (lobby.phase === 'discussion' && me.isHost) {
-    controls.appendChild(button('Zur Abstimmung', async () => {
-      const res = await rpc('discussion:toVoting');
       if (!res.ok) showError(res.error);
     }));
   }

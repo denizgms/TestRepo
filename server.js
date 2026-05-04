@@ -10,8 +10,7 @@ const MIN_PLAYERS = 4;
 const GAME_CONFIG = {
   imposterWordMode: 'none', // 'none' | 'different'
   imposterMessage: 'Du bist der Imposter. Versuche das Wort zu erraten und unauffällig zu bleiben.',
-  allowImposterFinalGuess: true,
-  randomizeTurnOrder: true
+  allowImposterFinalGuess: true
 };
 
 const words = JSON.parse(
@@ -45,10 +44,6 @@ function getLobbyPublicState(lobby) {
     hostId: lobby.hostId,
     players: lobby.players.map((p) => ({ id: p.id, name: p.name, connected: p.connected })),
     minPlayers: MIN_PLAYERS,
-    turnOrder: lobby.turnOrder,
-    currentTurnIndex: lobby.currentTurnIndex,
-    clues: lobby.clues,
-    discussionNotes: lobby.discussionNotes,
     votesSubmitted: lobby.votesSubmitted,
     voteResults: lobby.voteResults,
     accused: lobby.accused,
@@ -92,7 +87,6 @@ function calculateImposterCount(playerCount) {
 function setupRound(lobby) {
   lobby.phase = 'reveal';
   lobby.secretWord = pickRandom(words);
-  lobby.clues = [];
   lobby.votes = {};
   lobby.voteResults = null;
   lobby.votesSubmitted = 0;
@@ -111,13 +105,19 @@ function setupRound(lobby) {
     p.voted = false;
     p.imposterWord = GAME_CONFIG.imposterWordMode === 'different' ? pickRandom(words.filter((w) => w !== lobby.secretWord)) : GAME_CONFIG.imposterMessage;
   });
-
-  lobby.turnOrder = (GAME_CONFIG.randomizeTurnOrder ? shuffle(lobby.players) : [...lobby.players]).map((p) => p.id);
-  lobby.currentTurnIndex = 0;
 }
 
 function allReady(lobby) {
   return lobby.players.every((p) => p.ready);
+}
+
+function startVoting(lobby) {
+  lobby.phase = 'voting';
+  lobby.votes = {};
+  lobby.votesSubmitted = 0;
+  lobby.voteResults = null;
+  lobby.tiePlayers = [];
+  lobby.players.forEach((p) => (p.voted = false));
 }
 
 function resolveVotes(lobby) {
@@ -170,9 +170,6 @@ io.on('connection', (socket) => {
       hostId: socket.id,
       phase: 'lobby',
       players: [{ id: socket.id, name: trimmed, connected: true, role: null, ready: false, voted: false }],
-      turnOrder: [],
-      currentTurnIndex: 0,
-      clues: [],
       votes: {},
       votesSubmitted: 0,
       voteResults: null,
@@ -221,35 +218,7 @@ io.on('connection', (socket) => {
     const p = lobby.players.find((x) => x.id === socket.id);
     if (!p) return cb({ ok: false, error: 'Spieler nicht gefunden.' });
     p.ready = true;
-    if (allReady(lobby)) lobby.phase = 'clue';
-    cb({ ok: true });
-    emitLobbyState(lobby.code);
-  });
-
-  socket.on('clue:submit', ({ text }, cb) => {
-    const lobby = lobbies.get(socket.data.lobbyCode);
-    if (!lobby || lobby.phase !== 'clue') return cb({ ok: false, error: 'Nicht in Hinweis-Phase.' });
-    const currentPlayerId = lobby.turnOrder[lobby.currentTurnIndex];
-    if (currentPlayerId !== socket.id) return cb({ ok: false, error: 'Du bist nicht am Zug.' });
-    const clue = (text || '').trim();
-    if (!clue) return cb({ ok: false, error: 'Hinweis darf nicht leer sein.' });
-
-    const player = lobby.players.find((p) => p.id === socket.id);
-    lobby.clues.push({ playerId: socket.id, playerName: player.name, text: clue });
-    lobby.currentTurnIndex += 1;
-    if (lobby.currentTurnIndex >= lobby.turnOrder.length) lobby.phase = 'discussion';
-    cb({ ok: true });
-    emitLobbyState(lobby.code);
-  });
-
-  socket.on('discussion:toVoting', (_, cb) => {
-    const lobby = lobbies.get(socket.data.lobbyCode);
-    if (!lobby || lobby.phase !== 'discussion') return cb({ ok: false, error: 'Nicht in Diskussion.' });
-    if (lobby.hostId !== socket.id) return cb({ ok: false, error: 'Nur Host kann fortfahren.' });
-    lobby.phase = 'voting';
-    lobby.votes = {};
-    lobby.votesSubmitted = 0;
-    lobby.players.forEach((p) => (p.voted = false));
+    if (allReady(lobby)) startVoting(lobby);
     cb({ ok: true });
     emitLobbyState(lobby.code);
   });
@@ -276,11 +245,7 @@ io.on('connection', (socket) => {
     const lobby = lobbies.get(socket.data.lobbyCode);
     if (!lobby || lobby.phase !== 'voting') return cb({ ok: false, error: 'Nicht in Abstimmung.' });
     if (lobby.hostId !== socket.id) return cb({ ok: false, error: 'Nur Host.' });
-    lobby.votes = {};
-    lobby.votesSubmitted = 0;
-    lobby.voteResults = null;
-    lobby.tiePlayers = [];
-    lobby.players.forEach((p) => (p.voted = false));
+    startVoting(lobby);
     cb({ ok: true });
     emitLobbyState(lobby.code);
   });
