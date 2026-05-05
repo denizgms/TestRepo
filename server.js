@@ -181,7 +181,7 @@ function emitLobbyState(code) {
 }
 
 function calculateImposterCount(playerCount) {
-  return playerCount <= 4 ? 1 : 2;
+  return playerCount >= 7 ? 2 : 1;
 }
 
 function getActivePlayers(lobby) {
