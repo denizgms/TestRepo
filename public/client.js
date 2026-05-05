@@ -1,5 +1,7 @@
 const socket = io();
 const VOTE_ABSTAIN = '__abstain__';
+const CLIENT_ID_KEY = 'imposterClientId';
+const LOBBY_SESSION_KEY = 'imposterLobbySession';
 let state = null;
 
 const joinScreen = document.getElementById('joinScreen');
@@ -9,13 +11,13 @@ const codeInput = document.getElementById('codeInput');
 const createBtn = document.getElementById('createBtn');
 const joinBtn = document.getElementById('joinBtn');
 const lobbyCodeEl = document.getElementById('lobbyCode');
+const lobbyUrlEl = document.getElementById('lobbyUrl');
 const phaseLabel = document.getElementById('phaseLabel');
 const statusMessage = document.getElementById('statusMessage');
 const playersList = document.getElementById('playersList');
 const privateInfo = document.getElementById('privateInfo');
 const categorySelect = document.getElementById('categorySelect');
 const categoryInfo = document.getElementById('categoryInfo');
-const messagesList = document.getElementById('messagesList');
 const controls = document.getElementById('controls');
 
 function rpc(event, payload = {}) {
@@ -26,16 +28,93 @@ function rpc(event, payload = {}) {
 
 function showError(msg) { alert(msg); }
 
+function readStorage(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Private browsing or disabled storage should not block the game.
+  }
+}
+
+function getClientId() {
+  const existingId = readStorage(CLIENT_ID_KEY);
+  if (existingId) return existingId;
+
+  const newId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  writeStorage(CLIENT_ID_KEY, newId);
+  return newId;
+}
+
+function getSavedLobbySession() {
+  const rawSession = readStorage(LOBBY_SESSION_KEY);
+  if (!rawSession) return null;
+
+  try {
+    return JSON.parse(rawSession);
+  } catch {
+    return null;
+  }
+}
+
+function saveLobbySession(code, name) {
+  const cleanCode = (code || '').trim().toUpperCase();
+  const cleanName = (name || '').trim();
+  if (!cleanCode || !cleanName) return;
+
+  writeStorage(LOBBY_SESSION_KEY, JSON.stringify({ code: cleanCode, name: cleanName }));
+}
+
+function getLobbyCodeFromUrl() {
+  const match = window.location.pathname.match(/^\/lobby\/([A-Z0-9]{5})\/?$/i);
+  return match ? match[1].toUpperCase() : '';
+}
+
+function getLobbyUrl(code) {
+  return `${window.location.origin}/lobby/${code}`;
+}
+
+function setLobbyUrl(code) {
+  const cleanCode = (code || '').trim().toUpperCase();
+  if (!cleanCode) return;
+
+  const path = `/lobby/${cleanCode}`;
+  if (window.location.pathname !== path) {
+    window.history.pushState({ lobbyCode: cleanCode }, '', path);
+  }
+}
+
+const clientId = getClientId();
+const initialLobbyCode = getLobbyCodeFromUrl();
+const savedLobbySession = getSavedLobbySession();
+if (initialLobbyCode) {
+  codeInput.value = initialLobbyCode;
+  if (savedLobbySession?.code === initialLobbyCode && savedLobbySession.name) {
+    nameInput.value = savedLobbySession.name;
+  }
+}
+
 createBtn.onclick = async () => {
-  const res = await rpc('lobby:create', { name: nameInput.value });
+  const res = await rpc('lobby:create', { name: nameInput.value, clientId });
   if (!res.ok) return showError(res.error);
+  saveLobbySession(res.code, nameInput.value);
+  setLobbyUrl(res.code);
   joinScreen.classList.add('hidden');
   gameScreen.classList.remove('hidden');
 };
 
 joinBtn.onclick = async () => {
-  const res = await rpc('lobby:join', { name: nameInput.value, code: codeInput.value });
+  const res = await rpc('lobby:join', { name: nameInput.value, code: codeInput.value, clientId });
   if (!res.ok) return showError(res.error);
+  saveLobbySession(res.code || codeInput.value, nameInput.value);
+  setLobbyUrl(res.code || codeInput.value);
   joinScreen.classList.add('hidden');
   gameScreen.classList.remove('hidden');
 };
@@ -50,11 +129,28 @@ socket.on('state:update', (newState) => {
   render();
 });
 
+socket.on('connect', async () => {
+  const code = getLobbyCodeFromUrl();
+  const savedSession = getSavedLobbySession();
+  if (!code || savedSession?.code !== code || !savedSession.name) return;
+
+  nameInput.value = savedSession.name;
+  codeInput.value = code;
+  const res = await rpc('lobby:rejoin', { name: savedSession.name, code, clientId });
+  if (!res.ok) return;
+
+  saveLobbySession(code, savedSession.name);
+  joinScreen.classList.add('hidden');
+  gameScreen.classList.remove('hidden');
+});
+
 function render() {
   if (!state) return;
   const { lobby, me } = state;
 
   lobbyCodeEl.textContent = lobby.code;
+  lobbyUrlEl.href = getLobbyUrl(lobby.code);
+  lobbyUrlEl.textContent = lobbyUrlEl.href;
   phaseLabel.textContent = `Phase: ${lobby.phase}`;
   renderCategorySelect(lobby, me);
 
@@ -64,13 +160,6 @@ function render() {
     li.className = p.eliminated ? 'eliminated' : '';
     li.textContent = `${p.name}${p.id === lobby.hostId ? ' (Host)' : ''}${p.eliminated ? ' (raus)' : ''}${p.connected ? '' : ' (offline)'}`;
     playersList.appendChild(li);
-  });
-
-  messagesList.innerHTML = '';
-  (lobby.messages || []).forEach((message) => {
-    const li = document.createElement('li');
-    li.textContent = message;
-    messagesList.appendChild(li);
   });
 
   const phaseText = {
@@ -96,7 +185,7 @@ function render() {
       const res = await rpc('game:start');
       if (!res.ok) showError(res.error);
     });
-    if (lobby.players.length < lobby.minPlayers) btn.disabled = true;
+    if (lobby.players.filter((p) => p.connected).length < lobby.minPlayers) btn.disabled = true;
     controls.appendChild(btn);
   }
 
@@ -142,6 +231,7 @@ function render() {
 
   if (me.isHost && ['reveal', 'voting'].includes(lobby.phase)) {
     controls.appendChild(button('Runde neu starten', startNewRound, 'secondary'));
+    controls.appendChild(button('Spiel beenden', endGame, 'danger'));
   }
 
   if (lobby.phase === 'result') {
@@ -153,6 +243,7 @@ function render() {
 
     if (me.isHost) {
       controls.appendChild(button('Neue Runde starten', startNewRound));
+      controls.appendChild(button('Spiel beenden', endGame, 'danger'));
     }
   }
 }
@@ -184,5 +275,10 @@ function button(label, onClick, variant = 'primary') {
 
 async function startNewRound() {
   const res = await rpc('game:newRound');
+  if (!res.ok) showError(res.error);
+}
+
+async function endGame() {
+  const res = await rpc('game:end');
   if (!res.ok) showError(res.error);
 }

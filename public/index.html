@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#111318" />
   <title>Imposter Word Game</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <main class="app">
@@ -22,6 +22,7 @@
 
     <section id="gameScreen" class="hidden card">
       <p><strong>Lobby:</strong> <span id="lobbyCode"></span></p>
+      <p><strong>Link:</strong> <a id="lobbyUrl" href=""></a></p>
       <p id="phaseLabel"></p>
       <p id="statusMessage"></p>
       <div id="categoryBlock" class="category-box">
@@ -34,15 +35,11 @@
         <h3>Spieler</h3>
         <ul id="playersList"></ul>
       </div>
-      <div id="messagesBlock">
-        <h3>Verlauf</h3>
-        <ul id="messagesList"></ul>
-      </div>
       <div id="controls" class="actions"></div>
     </section>
   </main>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="client.js"></script>
+  <script src="/client.js"></script>
 </body>
 </html>

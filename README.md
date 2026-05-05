@@ -15,6 +15,9 @@ Dann im Browser öffnen:
 
 - Host erstellt eine Lobby und teilt den Code.
 - Für mehrere Geräte im selben Netzwerk statt `localhost` die lokale IP des Host-PCs nutzen.
+- Lobby-Links haben das Format `/lobby/ABCDE`; ein Refresh verbindet denselben Browser automatisch wieder mit Name und Lobby.
+- Neue Spieler können nur beitreten, solange das Spiel noch nicht gestartet wurde.
+- Der Host kann ein laufendes Spiel beenden und mit derselben Lobby-ID in die Lobby zurückkehren, damit neue Spieler dazukommen können.
 - Mindestspielerzahl: 3.
 - Bei 3-4 Spielern gibt es 1 Imposter, bei 5+ Spielern 2 Imposter.
 - Der Host kann vor jeder Runde eine Wortliste wählen: Fußballer (146), Filme/Serien (322), Allgemeine Wörter (1000), Anime (100) oder alle Kategorien.
