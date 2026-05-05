@@ -5,7 +5,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 3000;
-const MIN_PLAYERS = 4;
+const MIN_PLAYERS = 3;
 const CATEGORY_ALL = 'all';
 const VOTE_ABSTAIN = '__abstain__';
 
@@ -137,7 +137,7 @@ function emitLobbyState(code) {
 }
 
 function calculateImposterCount(playerCount) {
-  return playerCount === 4 ? 1 : 2;
+  return playerCount <= 4 ? 1 : 2;
 }
 
 function getActivePlayers(lobby) {

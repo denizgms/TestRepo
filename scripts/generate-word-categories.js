@@ -7,8 +7,8 @@ const OUT_FILE = path.join(__dirname, '..', 'data', 'words.json');
 const USER_AGENT = 'ImposterLocalGame/1.0 (word-list generator)';
 
 const TARGET_COUNTS = {
-  footballers: 1000,
-  moviesSeries: 1000,
+  footballers: 140,
+  moviesSeries: 170,
   general: 1000,
   anime: 100
 };

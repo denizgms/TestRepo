@@ -74,7 +74,7 @@ function render() {
   });
 
   const phaseText = {
-    lobby: 'Warte auf Spieler (mind. 4).',
+    lobby: 'Warte auf Spieler (mind. 3).',
     reveal: 'Sieh dir deine Rolle an und drücke „Bereit“. Danach wird direkt abgestimmt.',
     voting: 'Wählt geheim. Enthalten ist erlaubt; raus fliegt nur jemand mit klarer Mehrheit.',
     result: 'Runde beendet.'
